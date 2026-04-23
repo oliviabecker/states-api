@@ -53,5 +53,7 @@ mongoose
     });
   })
   .catch((err) => {
-    console.error("MongoDB error:", err);
+    console.error("MONGO FAILED:");
+    console.error(err);
+    process.exit(1);
   });
