@@ -1,4 +1,3 @@
-const State = require("./models/States");
 require("dotenv").config();
 
 const express = require("express");
@@ -6,13 +5,15 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 
 const statesData = require("./statesData.json");
+const State = require("./models/States");
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
 /* =========================================================
-   ROOT (must return HTML)
+   ROOT (HTML REQUIRED)
 ========================================================= */
 app.get("/", (req, res) => {
   res.set("Content-Type", "text/html");
@@ -20,7 +21,15 @@ app.get("/", (req, res) => {
 });
 
 /* =========================================================
-   GET ALL STATES + contig FILTER
+   404 HANDLER
+========================================================= */
+app.use((req, res) => {
+  res.status(404).set("Content-Type", "text/html");
+  res.send("<h1>404 - Not Found</h1>");
+});
+
+/* =========================================================
+   STATES ENDPOINT
 ========================================================= */
 app.get("/states", (req, res) => {
   let result = [...statesData];
@@ -55,7 +64,7 @@ const verifyState = (req, res, next) => {
 };
 
 /* =========================================================
-   GET SINGLE STATE
+   GET STATE
 ========================================================= */
 app.get("/states/:state", verifyState, (req, res) => {
   const state = statesData.find((s) => s.code === req.code);
@@ -63,16 +72,10 @@ app.get("/states/:state", verifyState, (req, res) => {
 });
 
 /* =========================================================
-   HELPER: FIND STATE OBJECT
-========================================================= */
-const getState = (code) =>
-  statesData.find((s) => s.code === code.toUpperCase());
-
-/* =========================================================
    CAPITAL
 ========================================================= */
 app.get("/states/:state/capital", verifyState, (req, res) => {
-  const state = getState(req.code);
+  const state = statesData.find((s) => s.code === req.code);
 
   res.json({
     state: state.code,
@@ -84,7 +87,7 @@ app.get("/states/:state/capital", verifyState, (req, res) => {
    NICKNAME
 ========================================================= */
 app.get("/states/:state/nickname", verifyState, (req, res) => {
-  const state = getState(req.code);
+  const state = statesData.find((s) => s.code === req.code);
 
   res.json({
     state: state.code,
@@ -96,7 +99,7 @@ app.get("/states/:state/nickname", verifyState, (req, res) => {
    POPULATION
 ========================================================= */
 app.get("/states/:state/population", verifyState, (req, res) => {
-  const state = getState(req.code);
+  const state = statesData.find((s) => s.code === req.code);
 
   res.json({
     state: state.code,
@@ -108,7 +111,7 @@ app.get("/states/:state/population", verifyState, (req, res) => {
    ADMISSION
 ========================================================= */
 app.get("/states/:state/admission", verifyState, (req, res) => {
-  const state = getState(req.code);
+  const state = statesData.find((s) => s.code === req.code);
 
   res.json({
     state: state.code,
@@ -117,10 +120,19 @@ app.get("/states/:state/admission", verifyState, (req, res) => {
 });
 
 /* =========================================================
-   FUN FACT GET
+   FUN FACT GET (Mongo FIRST, fallback JSON)
 ========================================================= */
-app.get("/states/:state/funfact", verifyState, (req, res) => {
-  const state = getState(req.code);
+app.get("/states/:state/funfact", verifyState, async (req, res) => {
+  const mongoState = await State.findOne({ stateCode: req.code });
+
+  if (mongoState && mongoState.funfacts.length > 0) {
+    const random =
+      mongoState.funfacts[Math.floor(Math.random() * mongoState.funfacts.length)];
+
+    return res.json({ funfact: random });
+  }
+
+  const state = statesData.find((s) => s.code === req.code);
 
   if (!state.funfacts || state.funfacts.length === 0) {
     return res.status(404).json({
@@ -134,17 +146,10 @@ app.get("/states/:state/funfact", verifyState, (req, res) => {
   res.json({ funfact: random });
 });
 
-//FUN FACTS
-
-const getState = (code) =>
-  statesData.find((s) => s.code === code.toUpperCase());
-
 /* =========================================================
-   POST /states/:state/funfact
+   POST FUNFACT
 ========================================================= */
-app.post("/states/:state/funfact", verifyState, (req, res) => {
-  const state = getState(req.code);
-
+app.post("/states/:state/funfact", verifyState, async (req, res) => {
   const { funfacts } = req.body;
 
   if (!funfacts) {
@@ -159,22 +164,25 @@ app.post("/states/:state/funfact", verifyState, (req, res) => {
     });
   }
 
-  if (!state.funfacts) {
-    state.funfacts = [];
-  }
+  let state = await State.findOne({ stateCode: req.code });
 
-  // DO NOT overwrite existing
-  state.funfacts.push(...funfacts);
+  if (!state) {
+    state = await State.create({
+      stateCode: req.code,
+      funfacts: funfacts
+    });
+  } else {
+    state.funfacts.push(...funfacts);
+    await state.save();
+  }
 
   res.json(state);
 });
 
 /* =========================================================
-   PATCH /states/:state/funfact
+   PATCH FUNFACT
 ========================================================= */
-app.patch("/states/:state/funfact", verifyState, (req, res) => {
-  const state = getState(req.code);
-
+app.patch("/states/:state/funfact", verifyState, async (req, res) => {
   const { index, funfact } = req.body;
 
   if (!index) {
@@ -189,9 +197,11 @@ app.patch("/states/:state/funfact", verifyState, (req, res) => {
     });
   }
 
-  if (!state.funfacts || state.funfacts.length === 0) {
+  const state = await State.findOne({ stateCode: req.code });
+
+  if (!state || state.funfacts.length === 0) {
     return res.status(404).json({
-      message: `No Fun Facts found for ${state.state}`
+      message: `No Fun Facts found for ${req.code}`
     });
   }
 
@@ -199,21 +209,20 @@ app.patch("/states/:state/funfact", verifyState, (req, res) => {
 
   if (i < 0 || i >= state.funfacts.length) {
     return res.status(404).json({
-      message: `No Fun Fact found at that index for ${state.state}`
+      message: `No Fun Fact found at that index for ${req.code}`
     });
   }
 
   state.funfacts[i] = funfact;
+  await state.save();
 
   res.json(state);
 });
 
 /* =========================================================
-   DELETE /states/:state/funfact
+   DELETE FUNFACT
 ========================================================= */
-app.delete("/states/:state/funfact", verifyState, (req, res) => {
-  const state = getState(req.code);
-
+app.delete("/states/:state/funfact", verifyState, async (req, res) => {
   const { index } = req.body;
 
   if (!index) {
@@ -222,9 +231,11 @@ app.delete("/states/:state/funfact", verifyState, (req, res) => {
     });
   }
 
-  if (!state.funfacts || state.funfacts.length === 0) {
+  const state = await State.findOne({ stateCode: req.code });
+
+  if (!state || state.funfacts.length === 0) {
     return res.status(404).json({
-      message: `No Fun Facts found for ${state.state}`
+      message: `No Fun Facts found for ${req.code}`
     });
   }
 
@@ -232,25 +243,18 @@ app.delete("/states/:state/funfact", verifyState, (req, res) => {
 
   if (i < 0 || i >= state.funfacts.length) {
     return res.status(404).json({
-      message: `No Fun Fact found at that index for ${state.state}`
+      message: `No Fun Fact found at that index for ${req.code}`
     });
   }
 
   state.funfacts.splice(i, 1);
+  await state.save();
 
   res.json(state);
 });
 
 /* =========================================================
-   404 HANDLER 
-========================================================= */
-app.use((req, res) => {
-  res.status(404).set("Content-Type", "text/html");
-  res.send("<h1>404 - Not Found</h1>");
-});
-
-/* =========================================================
-   START SERVER 
+   START SERVER
 ========================================================= */
 const PORT = process.env.PORT || 3000;
 
@@ -263,10 +267,11 @@ mongoose
       console.log(`Server running on port ${PORT}`);
     });
   })
-  .catch(() => {
-  
+  .catch((err) => {
+    console.log("MongoDB error:", err);
+
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT} (no DB)`);
+      console.log(`Server running on port ${PORT} (no DB fallback)`);
     });
   });
 
