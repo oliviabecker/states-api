@@ -11,16 +11,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* -----------------------------
-   TEST ROUTE
------------------------------ */
+
 app.get("/", (req, res) => {
   res.send("States API is running");
 });
 
-/* -----------------------------
-   VERIFY STATE MIDDLEWARE
------------------------------ */
 const verifyState = (req, res, next) => {
   const stateCodes = statesData.map((s) => s.code);
 
@@ -34,17 +29,13 @@ const verifyState = (req, res, next) => {
   next();
 };
 
-/* -----------------------------
-   GET STATE
------------------------------ */
+
 app.get("/states/:state", verifyState, (req, res) => {
   const stateData = statesData.find((s) => s.code === req.code);
   res.json(stateData);
 });
 
-/* -----------------------------
-   CONNECT TO MONGO + START SERVER
------------------------------ */
+
 const PORT = process.env.PORT || 3000;
 
 mongoose
