@@ -1,7 +1,8 @@
+require("dotenv").config();
+
 console.log("SERVER STARTING...");
 console.log("PORT:", process.env.PORT);
 console.log("DB:", process.env.DATABASE_URI ? "FOUND" : "MISSING");
-require("dotenv").config();
 
 const express = require("express");
 const mongoose = require("mongoose");
@@ -18,6 +19,7 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.send("States API is running");
 });
+
 
 const verifyState = (req, res, next) => {
   const stateCodes = statesData.map((s) => s.code);
@@ -50,4 +52,6 @@ mongoose
       console.log(`Server running on port ${PORT}`);
     });
   })
-  .catch((err) => console.log("MongoDB error:", err));
+  .catch((err) => {
+    console.error("MongoDB error:", err);
+  });
