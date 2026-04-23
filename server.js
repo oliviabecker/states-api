@@ -1,3 +1,4 @@
+const State = require("./models/States");
 require("dotenv").config();
 
 const express = require("express");
