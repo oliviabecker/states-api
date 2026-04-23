@@ -133,8 +133,115 @@ app.get("/states/:state/funfact", verifyState, (req, res) => {
   res.json({ funfact: random });
 });
 
+//FUN FACTS
+
+const getState = (code) =>
+  statesData.find((s) => s.code === code.toUpperCase());
+
 /* =========================================================
-   404 HANDLER (MUST BE LAST)
+   POST /states/:state/funfact
+========================================================= */
+app.post("/states/:state/funfact", verifyState, (req, res) => {
+  const state = getState(req.code);
+
+  const { funfacts } = req.body;
+
+  if (!funfacts) {
+    return res.status(400).json({
+      message: "State fun facts value required"
+    });
+  }
+
+  if (!Array.isArray(funfacts)) {
+    return res.status(400).json({
+      message: "State fun facts value must be an array"
+    });
+  }
+
+  if (!state.funfacts) {
+    state.funfacts = [];
+  }
+
+  // DO NOT overwrite existing
+  state.funfacts.push(...funfacts);
+
+  res.json(state);
+});
+
+/* =========================================================
+   PATCH /states/:state/funfact
+========================================================= */
+app.patch("/states/:state/funfact", verifyState, (req, res) => {
+  const state = getState(req.code);
+
+  const { index, funfact } = req.body;
+
+  if (!index) {
+    return res.status(400).json({
+      message: "State fun fact index value required"
+    });
+  }
+
+  if (!funfact || typeof funfact !== "string") {
+    return res.status(400).json({
+      message: "State fun fact value required"
+    });
+  }
+
+  if (!state.funfacts || state.funfacts.length === 0) {
+    return res.status(404).json({
+      message: `No Fun Facts found for ${state.state}`
+    });
+  }
+
+  const i = index - 1;
+
+  if (i < 0 || i >= state.funfacts.length) {
+    return res.status(404).json({
+      message: `No Fun Fact found at that index for ${state.state}`
+    });
+  }
+
+  state.funfacts[i] = funfact;
+
+  res.json(state);
+});
+
+/* =========================================================
+   DELETE /states/:state/funfact
+========================================================= */
+app.delete("/states/:state/funfact", verifyState, (req, res) => {
+  const state = getState(req.code);
+
+  const { index } = req.body;
+
+  if (!index) {
+    return res.status(400).json({
+      message: "State fun fact index value required"
+    });
+  }
+
+  if (!state.funfacts || state.funfacts.length === 0) {
+    return res.status(404).json({
+      message: `No Fun Facts found for ${state.state}`
+    });
+  }
+
+  const i = index - 1;
+
+  if (i < 0 || i >= state.funfacts.length) {
+    return res.status(404).json({
+      message: `No Fun Fact found at that index for ${state.state}`
+    });
+  }
+
+  state.funfacts.splice(i, 1);
+
+  res.json(state);
+});
+
+/* =========================================================
+   404 HANDLER 
 ========================================================= */
 app.use((req, res) => {
   res.status(404).set("Content-Type", "text/html");
@@ -142,7 +249,7 @@ app.use((req, res) => {
 });
 
 /* =========================================================
-   START SERVER (MONGO OPTIONAL FOR TESTS)
+   START SERVER 
 ========================================================= */
 const PORT = process.env.PORT || 3000;
 
@@ -156,8 +263,10 @@ mongoose
     });
   })
   .catch(() => {
-    // IMPORTANT: still run server even if mongo fails for testing
+  
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT} (no DB)`);
     });
   });
+
+
