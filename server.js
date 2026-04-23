@@ -1,3 +1,6 @@
+console.log("SERVER STARTING...");
+console.log("PORT:", process.env.PORT);
+console.log("DB:", process.env.DATABASE_URI ? "FOUND" : "MISSING");
 require("dotenv").config();
 
 const express = require("express");
