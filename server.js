@@ -25,47 +25,40 @@ mongoose
 ========================= */
 app.get("/", (req, res) => {
   res.setHeader("Content-Type", "text/html");
-  res.send(`
-    <h1>States API</h1>
-    <p>API is running</p>
-  `);
+  res.send(`<h1>States API is running</h1>`);
 });
 
 /* =========================
    HELPERS
 ========================= */
-const getStateData = (code) =>
+const getState = (code) =>
   statesData.find((s) => s.code === code.toUpperCase());
 
 const isValidState = (code) =>
   statesData.some((s) => s.code === code.toUpperCase());
 
-const formatStateResponse = async (stateObj) => {
-  const dbState = await State.findOne({
-    stateCode: stateObj.code,
-  });
+const validateState = (req, res, next) => {
+  const code = req.params.state.toUpperCase();
 
-  const funfacts = dbState?.funfacts;
+  if (!isValidState(code)) {
+    return res
+      .status(400)
+      .json({ message: "Invalid state abbreviation parameter" });
+  }
 
-  return {
-    ...stateObj,
-    ...(funfacts?.length ? { funfacts } : {}),
-  };
+  req.code = code;
+  next();
 };
 
 /* =========================
    404 HANDLER (HTML)
 ========================= */
 app.use((req, res) => {
-  res.status(404).send(`
-    <h1>404</h1>
-    <p>Resource not found</p>
-  `);
+  res.status(404).send(`<h1>404 - Not Found</h1>`);
 });
 
 /* =========================
-   GET ALL STATES
-   /states?contig=true|false
+   GET /states (ALL + CONTIG)
 ========================= */
 app.get("/states", async (req, res) => {
   let data = [...statesData];
@@ -81,15 +74,14 @@ app.get("/states", async (req, res) => {
   }
 
   const results = await Promise.all(
-    data.map(async (s) => {
-      const dbState = await State.findOne({ stateCode: s.code });
+    data.map(async (state) => {
+      const db = await State.findOne({ stateCode: state.code });
 
-      return {
-        ...s,
-        ...(dbState?.funfacts?.length
-          ? { funfacts: dbState.funfacts }
-          : {}),
-      };
+      if (db?.funfacts?.length) {
+        return { ...state, funfacts: db.funfacts };
+      }
+
+      return state;
     })
   );
 
@@ -97,47 +89,69 @@ app.get("/states", async (req, res) => {
 });
 
 /* =========================
-   STATE PARAM MIDDLEWARE
-========================= */
-const validateState = (req, res, next) => {
-  const code = req.params.state.toUpperCase();
-
-  if (!isValidState(code)) {
-    return res
-      .status(400)
-      .json({ message: "Invalid state abbreviation parameter" });
-  }
-
-  req.code = code;
-  next();
-};
-
-/* =========================
-   GET STATE
+   GET SINGLE STATE
 ========================= */
 app.get("/states/:state", validateState, async (req, res) => {
-  const state = getStateData(req.code);
-  const formatted = await formatStateResponse(state);
-  res.json(formatted);
+  const state = getState(req.code);
+  const db = await State.findOne({ stateCode: req.code });
+
+  if (db?.funfacts?.length) {
+    return res.json({ ...state, funfacts: db.funfacts });
+  }
+
+  res.json(state);
 });
 
 /* =========================
-   FUN FACTS GET
+   CAPITAL
+========================= */
+app.get("/states/:state/capital", validateState, (req, res) => {
+  const state = getState(req.code);
+  res.json({ state: state.state, capital: state.capital });
+});
+
+/* =========================
+   NICKNAME
+========================= */
+app.get("/states/:state/nickname", validateState, (req, res) => {
+  const state = getState(req.code);
+  res.json({ state: state.state, nickname: state.nickname });
+});
+
+/* =========================
+   POPULATION
+========================= */
+app.get("/states/:state/population", validateState, (req, res) => {
+  const state = getState(req.code);
+
+  res.json({
+    state: state.state,
+    population: Number(state.population).toLocaleString(),
+  });
+});
+
+/* =========================
+   ADMISSION
+========================= */
+app.get("/states/:state/admission", validateState, (req, res) => {
+  const state = getState(req.code);
+  res.json({ state: state.state, admitted: state.admission });
+});
+
+/* =========================
+   GET FUN FACT
 ========================= */
 app.get("/states/:state/funfact", validateState, async (req, res) => {
-  const dbState = await State.findOne({ stateCode: req.code });
+  const db = await State.findOne({ stateCode: req.code });
 
-  if (!dbState || dbState.funfacts.length === 0) {
-    const stateName = getStateData(req.code).state;
-    return res
-      .status(404)
-      .json({ message: `No Fun Facts found for ${stateName}` });
+  if (!db?.funfacts?.length) {
+    return res.status(404).json({
+      message: `No Fun Facts found for ${getState(req.code).state}`,
+    });
   }
 
   const random =
-    dbState.funfacts[
-      Math.floor(Math.random() * dbState.funfacts.length)
-    ];
+    db.funfacts[Math.floor(Math.random() * db.funfacts.length)];
 
   res.json({ funfact: random });
 });
@@ -175,12 +189,12 @@ app.post("/states/:state/funfact", validateState, async (req, res) => {
 app.patch("/states/:state/funfact", validateState, async (req, res) => {
   const { index, funfact } = req.body;
 
-  const dbState = await State.findOne({ stateCode: req.code });
+  const db = await State.findOne({ stateCode: req.code });
 
-  if (!dbState || dbState.funfacts.length === 0) {
-    return res
-      .status(404)
-      .json({ message: `No Fun Facts found for ${getStateData(req.code).state}` });
+  if (!db?.funfacts?.length) {
+    return res.status(404).json({
+      message: `No Fun Facts found for ${getState(req.code).state}`,
+    });
   }
 
   if (!index) {
@@ -197,16 +211,16 @@ app.patch("/states/:state/funfact", validateState, async (req, res) => {
 
   const i = index - 1;
 
-  if (!dbState.funfacts[i]) {
+  if (!db.funfacts[i]) {
     return res.status(404).json({
-      message: `No Fun Fact found at that index for ${getStateData(req.code).state}`,
+      message: `No Fun Fact found at that index for ${getState(req.code).state}`,
     });
   }
 
-  dbState.funfacts[i] = funfact;
-  await dbState.save();
+  db.funfacts[i] = funfact;
+  await db.save();
 
-  res.json(dbState);
+  res.json(db);
 });
 
 /* =========================
@@ -215,11 +229,11 @@ app.patch("/states/:state/funfact", validateState, async (req, res) => {
 app.delete("/states/:state/funfact", validateState, async (req, res) => {
   const { index } = req.body;
 
-  const dbState = await State.findOne({ stateCode: req.code });
+  const db = await State.findOne({ stateCode: req.code });
 
-  if (!dbState || dbState.funfacts.length === 0) {
+  if (!db?.funfacts?.length) {
     return res.status(404).json({
-      message: `No Fun Facts found for ${getStateData(req.code).state}`,
+      message: `No Fun Facts found for ${getState(req.code).state}`,
     });
   }
 
@@ -231,51 +245,16 @@ app.delete("/states/:state/funfact", validateState, async (req, res) => {
 
   const i = index - 1;
 
-  if (!dbState.funfacts[i]) {
+  if (!db.funfacts[i]) {
     return res.status(404).json({
-      message: `No Fun Fact found at that index for ${getStateData(req.code).state}`,
+      message: `No Fun Fact found at that index for ${getState(req.code).state}`,
     });
   }
 
-  dbState.funfacts.splice(i, 1);
-  await dbState.save();
+  db.funfacts.splice(i, 1);
+  await db.save();
 
-  res.json(dbState);
-});
-
-/* =========================
-   CAPITAL
-========================= */
-app.get("/states/:state/capital", validateState, (req, res) => {
-  const state = getStateData(req.code);
-  res.json({ state: state.state, capital: state.capital });
-});
-
-/* =========================
-   NICKNAME
-========================= */
-app.get("/states/:state/nickname", validateState, (req, res) => {
-  const state = getStateData(req.code);
-  res.json({ state: state.state, nickname: state.nickname });
-});
-
-/* =========================
-   POPULATION
-========================= */
-app.get("/states/:state/population", validateState, (req, res) => {
-  const state = getStateData(req.code);
-  res.json({
-    state: state.state,
-    population: Number(state.population).toLocaleString(),
-  });
-});
-
-/* =========================
-   ADMISSION
-========================= */
-app.get("/states/:state/admission", validateState, (req, res) => {
-  const state = getStateData(req.code);
-  res.json({ state: state.state, admitted: state.admission });
+  res.json(db);
 });
 
 /* =========================
