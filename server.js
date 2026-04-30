@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 /* -----------------------------
-   ROOT (HTML REQUIRED)
+   ROOT (HTML)
 ----------------------------- */
 app.get("/", (req, res) => {
   res.set("Content-Type", "text/html");
@@ -20,7 +20,7 @@ app.get("/", (req, res) => {
 });
 
 /* -----------------------------
-   IN-MEMORY FUN FACT STORE
+   FUN FACT STORE (in-memory)
 ----------------------------- */
 const funFactsStore = {};
 
@@ -74,7 +74,7 @@ app.get("/states", (req, res) => {
 });
 
 /* -----------------------------
-   GET STATE
+   GET SINGLE STATE
 ----------------------------- */
 app.get("/states/:state", verifyState, (req, res) => {
   const facts = funFactsStore[req.code];
@@ -212,6 +212,48 @@ app.delete("/states/:state/funfact", verifyState, (req, res) => {
   res.json({
     ...req.stateData,
     funfacts: facts,
+  });
+});
+
+/* -----------------------------
+   CAPITAL
+----------------------------- */
+app.get("/states/:state/capital", verifyState, (req, res) => {
+  res.json({
+    state: req.stateData.state,
+    capital: req.stateData.capital_city,
+  });
+});
+
+/* -----------------------------
+   NICKNAME
+----------------------------- */
+app.get("/states/:state/nickname", verifyState, (req, res) => {
+  res.json({
+    state: req.stateData.state,
+    nickname: req.stateData.nickname,
+  });
+});
+
+/* -----------------------------
+   POPULATION (STRING FORMAT)
+----------------------------- */
+app.get("/states/:state/population", verifyState, (req, res) => {
+  const formatted = req.stateData.population.toLocaleString("en-US");
+
+  res.json({
+    state: req.stateData.state,
+    population: formatted,
+  });
+});
+
+/* -----------------------------
+   ADMISSION DATE
+----------------------------- */
+app.get("/states/:state/admission", verifyState, (req, res) => {
+  res.json({
+    state: req.stateData.state,
+    admitted: req.stateData.admission_date,
   });
 });
 
