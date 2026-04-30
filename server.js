@@ -28,34 +28,34 @@ app.get("/", (req, res) => {
   `);
 });
 
-/*
-   FUN FACTS
+/* 
+   FUN FACT STORE  
 */
 const funFactsStore = {
   KS: [
     "Kansas experiences more tornadoes than most other states each year.",
-    "The first ever Pizza Hut restaurant was opened in Wichita, Kansas.",
-    "Kansas is one of the top producers of wheat in the United States."
+    "The first Pizza Hut opened in Wichita, Kansas.",
+    "Kansas is one of the top wheat producers in the U.S."
   ],
   MO: [
-    "Missouri is home to the Gateway Arch, which symbolizes westward expansion.",
-    "Mark Twain, a famous American author, was born in Missouri.",
-    "Missouri has thousands of caves and is often called the Cave State."
+    "Missouri is home to the Gateway Arch.",
+    "Mark Twain was born in Missouri.",
+    "Missouri is known as the Cave State."
   ],
   OK: [
-    "Oklahoma has one of the largest Native American populations in the U.S.",
-    "The state has a diverse landscape including plains, forests, and mountains.",
-    "Oklahoma City experienced one of the largest land runs in U.S. history."
+    "Oklahoma has a large Native American population.",
+    "Route 66 runs through Oklahoma.",
+    "Oklahoma has a diverse landscape of plains and forests."
   ],
   NE: [
-    "Nebraska has a single-house (unicameral) state legislature.",
-    "The state is a major producer of corn and beef.",
-    "Chimney Rock is one of Nebraska’s most famous natural landmarks."
+    "Nebraska has a unicameral legislature.",
+    "It is a top corn-producing state.",
+    "Chimney Rock is a famous landmark in Nebraska."
   ],
   CO: [
-    "Colorado is home to many high peaks, including over 50 mountains above 14,000 feet.",
-    "The state is known for its outdoor recreation like skiing and hiking.",
-    "Denver, Colorado’s capital, is nicknamed the Mile High City."
+    "Colorado has over 50 mountain peaks above 14,000 feet.",
+    "It is known as the Mile High State.",
+    "Colorado gets over 300 days of sunshine per year."
   ]
 };
 
@@ -65,9 +65,9 @@ const funFactsStore = {
 const findState = (code) =>
   statesData.find((s) => s.code === code.toUpperCase());
 
-/*
+/* 
    VERIFY STATE
- */
+*/
 const verifyState = (req, res, next) => {
   const state = findState(req.params.state);
 
@@ -96,7 +96,6 @@ app.get("/states", (req, res) => {
     states = states.filter((s) => s.code === "AK" || s.code === "HI");
   }
 
- 
   states = states.map((state) => {
     const facts = funFactsStore[state.code];
     if (facts && facts.length > 0) {
@@ -109,8 +108,8 @@ app.get("/states", (req, res) => {
 });
 
 /* 
-   GET STATE
-*/
+   GET SINGLE STATE
+ */
 app.get("/states/:state", verifyState, (req, res) => {
   const facts = funFactsStore[req.code];
 
@@ -125,7 +124,7 @@ app.get("/states/:state", verifyState, (req, res) => {
 });
 
 /* 
-   GET FUN FACT
+   GET RANDOM FUN FACT
  */
 app.get("/states/:state/funfact", verifyState, (req, res) => {
   const facts = funFactsStore[req.code];
@@ -141,9 +140,9 @@ app.get("/states/:state/funfact", verifyState, (req, res) => {
   res.json({ funfact: random });
 });
 
-/*
+/* 
    POST FUN FACT
- */
+*/
 app.post("/states/:state/funfact", verifyState, (req, res) => {
   const { funfacts } = req.body;
 
@@ -168,9 +167,15 @@ app.post("/states/:state/funfact", verifyState, (req, res) => {
     ...funfacts,
   ];
 
-  app.post("/states/:state/funfact", verifyState, (req, res) => {
+  res.json({
+    state: req.stateData.state,
+    code: req.code,
+    funfacts: funFactsStore[req.code],
+    totalFunfacts: funFactsStore[req.code].length
+  });
+});
 
-/*
+/* 
    PATCH FUN FACT
  */
 app.patch("/states/:state/funfact", verifyState, (req, res) => {
@@ -267,19 +272,17 @@ app.get("/states/:state/nickname", verifyState, (req, res) => {
 });
 
 /* 
-   POPULATION STRING
- */
+   POPULATION
+*/
 app.get("/states/:state/population", verifyState, (req, res) => {
-  const formatted = req.stateData.population.toLocaleString("en-US");
-
   res.json({
     state: req.stateData.state,
-    population: formatted,
+    population: req.stateData.population.toLocaleString("en-US"),
   });
 });
 
 /* 
-   ADMISSION DATE
+   ADMISSION
 */
 app.get("/states/:state/admission", verifyState, (req, res) => {
   res.json({
@@ -305,7 +308,7 @@ app.use((req, res) => {
   `);
 });
 
-/*
+/* 
    START SERVER
  */
 const PORT = process.env.PORT || 3000;
