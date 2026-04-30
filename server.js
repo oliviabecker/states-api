@@ -5,162 +5,110 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 
 const statesData = require("./statesData.json");
-const State = require("./models/States");
 
 const app = express();
-const funFactsStore = {};
 
 app.use(cors());
 app.use(express.json());
 
-/* =========================================================
+/* -----------------------------
    ROOT (HTML REQUIRED)
-========================================================= */
+----------------------------- */
 app.get("/", (req, res) => {
   res.set("Content-Type", "text/html");
   res.send("<h1>States API is running</h1>");
 });
 
-/* =========================================================
-   404 HANDLER
-========================================================= */
-app.use((req, res) => {
-  res.status(404).set("Content-Type", "text/html");
-  res.send("<h1>404 - Not Found</h1>");
-});
+/* -----------------------------
+   IN-MEMORY FUN FACT STORE
+----------------------------- */
+const funFactsStore = {};
 
-/* =========================================================
-   STATES ENDPOINT
-========================================================= */
-app.get("/states", (req, res) => {
-  let result = [...statesData];
+/* -----------------------------
+   HELPER
+----------------------------- */
+const findState = (code) =>
+  statesData.find((s) => s.code === code.toUpperCase());
 
-  if (req.query.contig === "true") {
-    result = result.filter((s) => s.code !== "AK" && s.code !== "HI");
-  }
-
-  if (req.query.contig === "false") {
-    result = result.filter((s) => s.code === "AK" || s.code === "HI");
-  }
-
-  res.json(result);
-});
-
-/* =========================================================
-   VALIDATION MIDDLEWARE
-========================================================= */
-const validCodes = statesData.map((s) => s.code);
-
+/* -----------------------------
+   VERIFY STATE
+----------------------------- */
 const verifyState = (req, res, next) => {
-  const code = req.params.state.toUpperCase();
+  const state = findState(req.params.state);
 
-  if (!validCodes.includes(code)) {
+  if (!state) {
     return res.status(400).json({
-      message: "Invalid state abbreviation parameter"
+      message: "Invalid state abbreviation parameter",
     });
   }
 
-  req.code = code;
+  req.stateData = state;
+  req.code = state.code;
   next();
 };
 
-/* =========================================================
+/* -----------------------------
+   GET ALL STATES
+----------------------------- */
+app.get("/states", (req, res) => {
+  let states = [...statesData];
+
+  if (req.query.contig === "true") {
+    states = states.filter((s) => s.code !== "AK" && s.code !== "HI");
+  }
+
+  if (req.query.contig === "false") {
+    states = states.filter((s) => s.code === "AK" || s.code === "HI");
+  }
+
+  // merge funfacts
+  states = states.map((state) => {
+    const facts = funFactsStore[state.code];
+    if (facts && facts.length > 0) {
+      return { ...state, funfacts: facts };
+    }
+    return state;
+  });
+
+  res.json(states);
+});
+
+/* -----------------------------
    GET STATE
-========================================================= */
+----------------------------- */
 app.get("/states/:state", verifyState, (req, res) => {
-  const code = req.code;
-  const baseState = req.stateData;
+  const facts = funFactsStore[req.code];
 
-  const funfacts = funFactsStore[code];
-
-  if (funfacts && funfacts.length > 0) {
+  if (facts && facts.length > 0) {
     return res.json({
-      ...baseState,
-      funfacts: funfacts,
+      ...req.stateData,
+      funfacts: facts,
     });
   }
 
-  res.json(baseState);
+  res.json(req.stateData);
 });
 
-/* =========================================================
-   CAPITAL
-========================================================= */
-app.get("/states/:state/capital", verifyState, (req, res) => {
-  const state = statesData.find((s) => s.code === req.code);
+/* -----------------------------
+   GET FUN FACT
+----------------------------- */
+app.get("/states/:state/funfact", verifyState, (req, res) => {
+  const facts = funFactsStore[req.code];
 
-  res.json({
-    state: state.code,
-    capital: state.capital_city
-  });
-});
-
-/* =========================================================
-   NICKNAME
-========================================================= */
-app.get("/states/:state/nickname", verifyState, (req, res) => {
-  const state = statesData.find((s) => s.code === req.code);
-
-  res.json({
-    state: state.code,
-    nickname: state.nickname
-  });
-});
-
-/* =========================================================
-   POPULATION
-========================================================= */
-app.get("/states/:state/population", verifyState, (req, res) => {
-  const state = statesData.find((s) => s.code === req.code);
-
-  res.json({
-    state: state.code,
-    population: state.population.toLocaleString()
-  });
-});
-
-/* =========================================================
-   ADMISSION
-========================================================= */
-app.get("/states/:state/admission", verifyState, (req, res) => {
-  const state = statesData.find((s) => s.code === req.code);
-
-  res.json({
-    state: state.code,
-    admitted: state.admission_date
-  });
-});
-
-/* =========================================================
-   FUN FACT GET (Mongo FIRST, fallback JSON)
-========================================================= */
-app.get("/states/:state/funfact", verifyState, async (req, res) => {
-  const mongoState = await State.findOne({ stateCode: req.code });
-
-  if (mongoState && mongoState.funfacts.length > 0) {
-    const random =
-      mongoState.funfacts[Math.floor(Math.random() * mongoState.funfacts.length)];
-
-    return res.json({ funfact: random });
-  }
-
-  const state = statesData.find((s) => s.code === req.code);
-
-  if (!state.funfacts || state.funfacts.length === 0) {
+  if (!facts || facts.length === 0) {
     return res.status(404).json({
-      message: `No Fun Facts found for ${state.state}`
+      message: `No Fun Facts found for ${req.stateData.state}`,
     });
   }
 
-  const random =
-    state.funfacts[Math.floor(Math.random() * state.funfacts.length)];
+  const random = facts[Math.floor(Math.random() * facts.length)];
 
   res.json({ funfact: random });
 });
 
-/* =========================================================
-   POST FUNFACT
-========================================================= */
+/* -----------------------------
+   POST FUN FACT
+----------------------------- */
 app.post("/states/:state/funfact", verifyState, (req, res) => {
   const { funfacts } = req.body;
 
@@ -176,100 +124,108 @@ app.post("/states/:state/funfact", verifyState, (req, res) => {
     });
   }
 
-  const code = req.code;
-
-  if (!funFactsStore[code]) {
-    funFactsStore[code] = [];
+  if (!funFactsStore[req.code]) {
+    funFactsStore[req.code] = [];
   }
 
-  funFactsStore[code] = [
-    ...funFactsStore[code],
+  funFactsStore[req.code] = [
+    ...funFactsStore[req.code],
     ...funfacts,
   ];
 
   res.json({
     ...req.stateData,
-    funfacts: funFactsStore[code],
+    funfacts: funFactsStore[req.code],
   });
 });
 
-/* =========================================================
-   PATCH FUNFACT
-========================================================= */
-app.patch("/states/:state/funfact", verifyState, async (req, res) => {
+/* -----------------------------
+   PATCH FUN FACT
+----------------------------- */
+app.patch("/states/:state/funfact", verifyState, (req, res) => {
   const { index, funfact } = req.body;
+  const facts = funFactsStore[req.code];
 
   if (!index) {
     return res.status(400).json({
-      message: "State fun fact index value required"
+      message: "State fun fact index value required",
     });
   }
 
-  if (!funfact || typeof funfact !== "string") {
+  if (!funfact) {
     return res.status(400).json({
-      message: "State fun fact value required"
+      message: "State fun fact value required",
     });
   }
 
-  const state = await State.findOne({ stateCode: req.code });
-
-  if (!state || state.funfacts.length === 0) {
+  if (!facts || facts.length === 0) {
     return res.status(404).json({
-      message: `No Fun Facts found for ${req.code}`
+      message: `No Fun Facts found for ${req.stateData.state}`,
     });
   }
 
   const i = index - 1;
 
-  if (i < 0 || i >= state.funfacts.length) {
-    return res.status(404).json({
-      message: `No Fun Fact found at that index for ${req.code}`
+  if (!facts[i]) {
+    return res.status(400).json({
+      message: `No Fun Fact found at that index for ${req.stateData.state}`,
     });
   }
 
-  state.funfacts[i] = funfact;
-  await state.save();
+  facts[i] = funfact;
 
-  res.json(state);
+  res.json({
+    ...req.stateData,
+    funfacts: facts,
+  });
 });
 
-/* =========================================================
-   DELETE FUNFACT
-========================================================= */
-app.delete("/states/:state/funfact", verifyState, async (req, res) => {
+/* -----------------------------
+   DELETE FUN FACT
+----------------------------- */
+app.delete("/states/:state/funfact", verifyState, (req, res) => {
   const { index } = req.body;
+  const facts = funFactsStore[req.code];
 
   if (!index) {
     return res.status(400).json({
-      message: "State fun fact index value required"
+      message: "State fun fact index value required",
     });
   }
 
-  const state = await State.findOne({ stateCode: req.code });
-
-  if (!state || state.funfacts.length === 0) {
+  if (!facts || facts.length === 0) {
     return res.status(404).json({
-      message: `No Fun Facts found for ${req.code}`
+      message: `No Fun Facts found for ${req.stateData.state}`,
     });
   }
 
   const i = index - 1;
 
-  if (i < 0 || i >= state.funfacts.length) {
-    return res.status(404).json({
-      message: `No Fun Fact found at that index for ${req.code}`
+  if (!facts[i]) {
+    return res.status(400).json({
+      message: `No Fun Fact found at that index for ${req.stateData.state}`,
     });
   }
 
-  state.funfacts.splice(i, 1);
-  await state.save();
+  facts.splice(i, 1);
 
-  res.json(state);
+  res.json({
+    ...req.stateData,
+    funfacts: facts,
+  });
 });
 
-/* =========================================================
+/* -----------------------------
+   404 HANDLER (HTML)
+----------------------------- */
+app.use((req, res) => {
+  res.status(404).set("Content-Type", "text/html");
+  res.send("<h1>404 - Page Not Found</h1>");
+});
+
+/* -----------------------------
    START SERVER
-========================================================= */
+----------------------------- */
 const PORT = process.env.PORT || 3000;
 
 mongoose
@@ -281,12 +237,5 @@ mongoose
       console.log(`Server running on port ${PORT}`);
     });
   })
-  .catch((err) => {
-    console.log("MongoDB error:", err);
-
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT} (no DB fallback)`);
-    });
-  });
-
+  .catch((err) => console.log("MongoDB error:", err));
 
