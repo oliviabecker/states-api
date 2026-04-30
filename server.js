@@ -15,8 +15,7 @@ app.use(express.json());
    ROOT (HTML)
 ----------------------------- */
 app.get("/", (req, res) => {
-  res.set("Content-Type", "text/html");
-  res.send("<h1>States API is running</h1>");
+  res.status(200).type("html").send("<h1>States API is running</h1>");
 });
 
 /* -----------------------------
