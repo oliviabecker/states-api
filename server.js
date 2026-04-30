@@ -11,9 +11,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* -----------------------------
-   ROOT (HTML)
------------------------------ */
+/* 
+   HTML
+*/
 app.get("/", (req, res) => {
   res.status(200).send(`
     <!DOCTYPE html>
@@ -28,9 +28,9 @@ app.get("/", (req, res) => {
   `);
 });
 
-/* -----------------------------
+/*
    FUN FACTS
------------------------------ */
+*/
 const funFactsStore = {
   KS: [
     "Kansas experiences more tornadoes than most other states each year.",
@@ -59,15 +59,15 @@ const funFactsStore = {
   ]
 };
 
-/* -----------------------------
+/* 
    HELPER
------------------------------ */
+ */
 const findState = (code) =>
   statesData.find((s) => s.code === code.toUpperCase());
 
-/* -----------------------------
+/*
    VERIFY STATE
------------------------------ */
+ */
 const verifyState = (req, res, next) => {
   const state = findState(req.params.state);
 
@@ -82,9 +82,9 @@ const verifyState = (req, res, next) => {
   next();
 };
 
-/* -----------------------------
+/* 
    GET ALL STATES
------------------------------ */
+ */
 app.get("/states", (req, res) => {
   let states = [...statesData];
 
@@ -96,7 +96,7 @@ app.get("/states", (req, res) => {
     states = states.filter((s) => s.code === "AK" || s.code === "HI");
   }
 
-  // merge funfacts
+ 
   states = states.map((state) => {
     const facts = funFactsStore[state.code];
     if (facts && facts.length > 0) {
@@ -108,9 +108,9 @@ app.get("/states", (req, res) => {
   res.json(states);
 });
 
-/* -----------------------------
-   GET SINGLE STATE
------------------------------ */
+/* 
+   GET STATE
+*/
 app.get("/states/:state", verifyState, (req, res) => {
   const facts = funFactsStore[req.code];
 
@@ -124,9 +124,9 @@ app.get("/states/:state", verifyState, (req, res) => {
   res.json(req.stateData);
 });
 
-/* -----------------------------
+/* 
    GET FUN FACT
------------------------------ */
+ */
 app.get("/states/:state/funfact", verifyState, (req, res) => {
   const facts = funFactsStore[req.code];
 
@@ -141,9 +141,9 @@ app.get("/states/:state/funfact", verifyState, (req, res) => {
   res.json({ funfact: random });
 });
 
-/* -----------------------------
+/*
    POST FUN FACT
------------------------------ */
+ */
 app.post("/states/:state/funfact", verifyState, (req, res) => {
   const { funfacts } = req.body;
 
@@ -169,14 +169,15 @@ app.post("/states/:state/funfact", verifyState, (req, res) => {
   ];
 
   res.json({
-    ...req.stateData,
-    funfacts: funFactsStore[req.code],
-  });
+  state: req.stateData.state,
+  code: req.stateData.code,
+  funfacts: funFactsStore[req.code],
+  totalFunfacts: funFactsStore[req.code].length
 });
 
-/* -----------------------------
+/*
    PATCH FUN FACT
------------------------------ */
+ */
 app.patch("/states/:state/funfact", verifyState, (req, res) => {
   const { index, funfact } = req.body;
   const facts = funFactsStore[req.code];
@@ -215,9 +216,9 @@ app.patch("/states/:state/funfact", verifyState, (req, res) => {
   });
 });
 
-/* -----------------------------
+/* 
    DELETE FUN FACT
------------------------------ */
+ */
 app.delete("/states/:state/funfact", verifyState, (req, res) => {
   const { index } = req.body;
   const facts = funFactsStore[req.code];
@@ -250,9 +251,9 @@ app.delete("/states/:state/funfact", verifyState, (req, res) => {
   });
 });
 
-/* -----------------------------
+/* 
    CAPITAL
------------------------------ */
+ */
 app.get("/states/:state/capital", verifyState, (req, res) => {
   res.json({
     state: req.stateData.state,
@@ -260,9 +261,9 @@ app.get("/states/:state/capital", verifyState, (req, res) => {
   });
 });
 
-/* -----------------------------
+/* 
    NICKNAME
------------------------------ */
+ */
 app.get("/states/:state/nickname", verifyState, (req, res) => {
   res.json({
     state: req.stateData.state,
@@ -270,9 +271,9 @@ app.get("/states/:state/nickname", verifyState, (req, res) => {
   });
 });
 
-/* -----------------------------
-   POPULATION (STRING FORMAT)
------------------------------ */
+/* 
+   POPULATION STRING
+ */
 app.get("/states/:state/population", verifyState, (req, res) => {
   const formatted = req.stateData.population.toLocaleString("en-US");
 
@@ -282,9 +283,9 @@ app.get("/states/:state/population", verifyState, (req, res) => {
   });
 });
 
-/* -----------------------------
+/* 
    ADMISSION DATE
------------------------------ */
+*/
 app.get("/states/:state/admission", verifyState, (req, res) => {
   res.json({
     state: req.stateData.state,
@@ -292,9 +293,9 @@ app.get("/states/:state/admission", verifyState, (req, res) => {
   });
 });
 
-/* -----------------------------
-   404 HANDLER (HTML)
------------------------------ */
+/* 
+   404 HTML
+ */
 app.use((req, res) => {
   res.status(404).send(`
     <!DOCTYPE html>
@@ -309,9 +310,9 @@ app.use((req, res) => {
   `);
 });
 
-/* -----------------------------
+/*
    START SERVER
------------------------------ */
+ */
 const PORT = process.env.PORT || 3000;
 
 mongoose
