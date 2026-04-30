@@ -8,6 +8,7 @@ const statesData = require("./statesData.json");
 const State = require("./models/States");
 
 const app = express();
+const funFactsStore = {};
 
 app.use(cors());
 app.use(express.json());
@@ -67,8 +68,19 @@ const verifyState = (req, res, next) => {
    GET STATE
 ========================================================= */
 app.get("/states/:state", verifyState, (req, res) => {
-  const state = statesData.find((s) => s.code === req.code);
-  res.json(state);
+  const code = req.code;
+  const baseState = req.stateData;
+
+  const funfacts = funFactsStore[code];
+
+  if (funfacts && funfacts.length > 0) {
+    return res.json({
+      ...baseState,
+      funfacts: funfacts,
+    });
+  }
+
+  res.json(baseState);
 });
 
 /* =========================================================
@@ -149,34 +161,36 @@ app.get("/states/:state/funfact", verifyState, async (req, res) => {
 /* =========================================================
    POST FUNFACT
 ========================================================= */
-app.post("/states/:state/funfact", verifyState, async (req, res) => {
+app.post("/states/:state/funfact", verifyState, (req, res) => {
   const { funfacts } = req.body;
 
   if (!funfacts) {
     return res.status(400).json({
-      message: "State fun facts value required"
+      message: "State fun facts value required",
     });
   }
 
   if (!Array.isArray(funfacts)) {
     return res.status(400).json({
-      message: "State fun facts value must be an array"
+      message: "State fun facts value must be an array",
     });
   }
 
-  let state = await State.findOne({ stateCode: req.code });
+  const code = req.code;
 
-  if (!state) {
-    state = await State.create({
-      stateCode: req.code,
-      funfacts: funfacts
-    });
-  } else {
-    state.funfacts.push(...funfacts);
-    await state.save();
+  if (!funFactsStore[code]) {
+    funFactsStore[code] = [];
   }
 
-  res.json(state);
+  funFactsStore[code] = [
+    ...funFactsStore[code],
+    ...funfacts,
+  ];
+
+  res.json({
+    ...req.stateData,
+    funfacts: funFactsStore[code],
+  });
 });
 
 /* =========================================================
