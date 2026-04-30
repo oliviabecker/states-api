@@ -168,12 +168,7 @@ app.post("/states/:state/funfact", verifyState, (req, res) => {
     ...funfacts,
   ];
 
-  res.json({
-  state: req.stateData.state,
-  code: req.stateData.code,
-  funfacts: funFactsStore[req.code],
-  totalFunfacts: funFactsStore[req.code].length
-});
+  app.post("/states/:state/funfact", verifyState, (req, res) => {
 
 /*
    PATCH FUN FACT
