@@ -29,9 +29,35 @@ app.get("/", (req, res) => {
 });
 
 /* -----------------------------
-   FUN FACT STORE (in-memory)
+   FUN FACTS
 ----------------------------- */
-const funFactsStore = {};
+const funFactsStore = {
+  KS: [
+    "Kansas experiences more tornadoes than most other states each year.",
+    "The first ever Pizza Hut restaurant was opened in Wichita, Kansas.",
+    "Kansas is one of the top producers of wheat in the United States."
+  ],
+  MO: [
+    "Missouri is home to the Gateway Arch, which symbolizes westward expansion.",
+    "Mark Twain, a famous American author, was born in Missouri.",
+    "Missouri has thousands of caves and is often called the Cave State."
+  ],
+  OK: [
+    "Oklahoma has one of the largest Native American populations in the U.S.",
+    "The state has a diverse landscape including plains, forests, and mountains.",
+    "Oklahoma City experienced one of the largest land runs in U.S. history."
+  ],
+  NE: [
+    "Nebraska has a single-house (unicameral) state legislature.",
+    "The state is a major producer of corn and beef.",
+    "Chimney Rock is one of Nebraska’s most famous natural landmarks."
+  ],
+  CO: [
+    "Colorado is home to many high peaks, including over 50 mountains above 14,000 feet.",
+    "The state is known for its outdoor recreation like skiing and hiking.",
+    "Denver, Colorado’s capital, is nicknamed the Mile High City."
+  ]
+};
 
 /* -----------------------------
    HELPER
