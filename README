@@ -1,0 +1,63 @@
+# States API
+
+A REST API that provides information about all 50 U.S. states, with support for adding and managing fun facts.
+
+## Features
+
+* Get all states or filter by contiguous/non-contiguous
+* Get a single state by abbreviation (case-insensitive)
+* View state details:
+
+  * Capital
+  * Nickname
+  * Population
+  * Admission date
+* Add, update, and delete fun facts for states
+* Returns proper HTML for root and 404 routes
+
+## URL
+
+```
+https://your-render-url.onrender.com
+```
+
+## Endpoints
+
+### General
+
+* `GET /` → HTML status page
+* `GET /states` → all states
+* `GET /states?contig=true` → 48 contiguous states
+* `GET /states?contig=false` → AK & HI
+
+### Single State
+
+* `GET /states/:state`
+
+### State Info
+
+* `GET /states/:state/capital`
+* `GET /states/:state/nickname`
+* `GET /states/:state/population`
+* `GET /states/:state/admission`
+
+### Fun Facts
+
+* `GET /states/:state/funfact`
+* `POST /states/:state/funfact`
+* `PATCH /states/:state/funfact`
+* `DELETE /states/:state/funfact`
+
+## Notes
+
+* State codes are case-insensitive (e.g., `ks`, `KS`, `kS`)
+* Some states come with preloaded fun facts
+* Fun facts are stored in memory for this project
+
+## Tech used
+
+Node.js, Express, MongoDB, Mongoose
+
+
+
+Made for a backend API project.
