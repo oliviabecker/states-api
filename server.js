@@ -270,8 +270,17 @@ app.get("/states/:state/admission", verifyState, (req, res) => {
    404 HANDLER (HTML)
 ----------------------------- */
 app.use((req, res) => {
-  res.status(404).set("Content-Type", "text/html");
-  res.send("<h1>404 - Page Not Found</h1>");
+  res.status(404).send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>404 Not Found</title>
+      </head>
+      <body>
+        <h1>404 - Page Not Found</h1>
+      </body>
+    </html>
+  `);
 });
 
 /* -----------------------------
